@@ -1,0 +1,34 @@
+{
+  "name": "can7usat-ground-station",
+  "version": "1.0.0",
+  "description": "IN-SPACe CAN-7USAT India Student Competition 2026 Ground Station - Team 038",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "jest --testTimeout=10000",
+    "test:e2e": "electron tests/e2e-electron.js",
+    "test:all": "jest --testTimeout=10000 && electron tests/e2e-electron.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@serialport/bindings-cpp": "^13.0.1",
+    "chart.js": "^4.6.1",
+    "date-fns": "^4.4.0",
+    "electron": "^45.0.0",
+    "leaflet": "^1.9.4",
+    "papaparse": "^5.7.0",
+    "react": "^19.3.1",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.3.1",
+    "react-leaflet": "^5.0.0",
+    "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.18.0",
+    "jest": "^30.5.2"
+  }
+}

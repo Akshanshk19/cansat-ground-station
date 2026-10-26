@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAN-7USAT Ground Station — Team 038</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="../../node_modules/leaflet/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TOP STATUS BAR                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <header id="status-bar">
+    <div class="sb-left">
+      <div class="sb-logo">◆ CAN-7USAT</div>
+      <div class="sb-team">TEAM 038</div>
+      <div id="sb-mode" class="sb-badge badge-sim">SIMULATION</div>
+      <div id="sb-connection" class="sb-badge badge-disconnected">DISCONNECTED</div>
+    </div>
+    <div class="sb-center">
+      <div id="sb-state" class="sb-state">BOOT</div>
+      <div id="sb-met" class="sb-met">T+ 0.0 s</div>
+    </div>
+    <div class="sb-right">
+      <div id="sb-packet-rate" class="sb-info">0 pkt/s</div>
+      <div id="sb-packets" class="sb-info">PKT: 0</div>
+      <div id="sb-recording" class="sb-badge badge-idle">NOT RECORDING</div>
+      <div id="sb-time" class="sb-clock"></div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- MAIN LAYOUT                                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="app-container">
+    <!-- SIDEBAR NAVIGATION -->
+    <nav id="sidebar">
+      <button class="nav-btn active" data-page="dashboard" title="Mission Dashboard">
+        <span class="nav-icon">◉</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-btn" data-page="telemetry" title="Live Telemetry">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-label">Telemetry</span>
+      </button>
+      <button class="nav-btn" data-page="charts" title="Charts">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Charts</span>
+      </button>
+      <button class="nav-btn" data-page="map" title="Tracking Map">
+        <span class="nav-icon">🌍</span>
+        <span class="nav-label">Map</span>
+      </button>
+      <button class="nav-btn" data-page="commands" title="Command Console">
+        <span class="nav-icon">⌘</span>
+        <span class="nav-label">Commands</span>
+      </button>
+      <button class="nav-btn" data-page="radio" title="Radio Config">
+        <span class="nav-icon">📡</span>
+        <span class="nav-label">Radio</span>
+      </button>
+      <button class="nav-btn" data-page="logger" title="Data Logger">
+        <span class="nav-icon">💾</span>
+        <span class="nav-label">Logger</span>
+      </button>
+      <button class="nav-btn" data-page="events" title="Event Log">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Events</span>
+      </button>
+      <button class="nav-btn" data-page="simulation" title="Simulation">
+        <span class="nav-icon">🧪</span>
+        <span class="nav-label">Simulation</span>
+      </button>
+      <button class="nav-btn" data-page="settings" title="Settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- CONTENT AREA -->
+    <main id="content-area">
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: DASHBOARD                                              -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h1>Mission Dashboard</h1>
+          <div class="sim-controls-inline">
+            <button id="btn-quick-start" class="btn btn-primary" onclick="quickStart()">▶ Start Simulation</button>
+            <button id="btn-quick-pause" class="btn btn-secondary" onclick="quickPause()" disabled>⏸ Pause</button>
+            <button id="btn-quick-reset" class="btn btn-danger" onclick="quickReset()">⟲ Reset</button>
+          </div>
+        </div>
+        
+        <!-- Flight State Banner -->
+        <div id="flight-state-banner" class="state-banner state-boot">
+          <div class="state-icon">●</div>
+          <div class="state-name" id="state-name">BOOT</div>
+          <div class="state-time" id="state-time">T+ 0.0 s</div>
+          <div class="state-source" id="state-source">SIMULATED</div>
+        </div>
+        
+        <!-- Telemetry Cards Grid -->
+        <div class="telemetry-grid">
+          <div class="tcard tcard-primary" id="card-altitude">
+            <div class="tcard-label">Rel. Altitude</div>
+            <div class="tcard-value" id="val-altitude">0.0</div>
+            <div class="tcard-unit">m</div>
+            <div class="tcard-status" id="stat-altitude">—</div>
+          </div>
+          <div class="tcard" id="card-gnss-alt">
+            <div class="tcard-label">GNSS Altitude</div>
+            <div class="tcard-value" id="val-gnss-alt">0.0</div>
+            <div class="tcard-unit">m ASL</div>
+            <div class="tcard-status" id="stat-gnss-alt">—</div>
+          </div>
+          <div class="tcard" id="card-velocity">
+            <div class="tcard-label">Vertical Velocity</div>
+            <div class="tcard-value" id="val-velocity">0.0</div>
+            <div class="tcard-unit">m/s</div>
+            <div class="tcard-status" id="stat-velocity">—</div>
+          </div>
+          <div class="tcard" id="card-pressure">
+            <div class="tcard-label">Pressure</div>
+            <div class="tcard-value" id="val-pressure">101325</div>
+            <div class="tcard-unit">Pa</div>
+            <div class="tcard-status" id="stat-pressure">—</div>
+          </div>
+          <div class="tcard" id="card-temp">
+            <div class="tcard-label">Temperature</div>
+            <div class="tcard-value" id="val-temp">25.0</div>
+            <div class="tcard-unit">°C</div>
+            <div class="tcard-status" id="stat-temp">—</div>
+          </div>
+          <div class="tcard tcard-accent" id="card-voltage">
+            <div class="tcard-label">Battery Voltage</div>
+            <div class="tcard-value" id="val-voltage">0.00</div>
+            <div class="tcard-unit">V</div>
+            <div class="tcard-status" id="stat-voltage">—</div>
+          </div>
+          <div class="tcard" id="card-lat">
+            <div class="tcard-label">Latitude</div>
+            <div class="tcard-value tcard-value-sm" id="val-lat">0.0000</div>
+            <div class="tcard-unit">°</div>
+            <div class="tcard-status" id="stat-lat">—</div>
+          </div>
+          <div class="tcard" id="card-lon">
+            <div class="tcard-label">Longitude</div>
+            <div class="tcard-value tcard-value-sm" id="val-lon">0.0000</div>
+            <div class="tcard-unit">°</div>
+            <div class="tcard-status" id="stat-lon">—</div>
+          </div>
+          <div class="tcard" id="card-sats">
+            <div class="tcard-label">GNSS Sats</div>
+            <div class="tcard-value" id="val-sats">0</div>
+            <div class="tcard-unit">sats</div>
+            <div class="tcard-status" id="stat-sats">—</div>
+          </div>
+          <div class="tcard" id="card-roll">
+            <div class="tcard-label">Roll / Pitch / Yaw</div>
+            <div class="tcard-value tcard-value-sm" id="val-rpy">0.0 / 0.0 / 0.0</div>
+            <div class="tcard-unit">°</div>
+            <div class="tcard-status" id="stat-rpy">—</div>
+          </div>
+          <div class="tcard" id="card-accel">
+            <div class="tcard-label">Acceleration (X/Y/Z)</div>
+            <div class="tcard-value tcard-value-sm" id="val-accel">0.00 / 0.00 / 0.00</div>
+            <div class="tcard-unit">m/s²</div>
+            <div class="tcard-status" id="stat-accel">—</div>
+          </div>
+          <div class="tcard" id="card-gyro">
+            <div class="tcard-label">Gyro Spin Rate</div>
+            <div class="tcard-value" id="val-gyro">0.0</div>
+            <div class="tcard-unit">°/s</div>
+            <div class="tcard-status" id="stat-gyro">—</div>
+          </div>
+          <div class="tcard" id="card-packets">
+            <div class="tcard-label">Packet Count</div>
+            <div class="tcard-value" id="val-packets">0</div>
+            <div class="tcard-unit">pkts</div>
+            <div class="tcard-status" id="stat-packets">—</div>
+          </div>
+          <div class="tcard" id="card-met">
+            <div class="tcard-label">Mission Time</div>
+            <div class="tcard-value" id="val-met">0.0</div>
+            <div class="tcard-unit">s</div>
+            <div class="tcard-status" id="stat-met">—</div>
+          </div>
+          <div class="tcard" id="card-update-rate">
+            <div class="tcard-label">Update Rate</div>
+            <div class="tcard-value" id="val-update-rate">0.0</div>
+            <div class="tcard-unit">Hz</div>
+            <div class="tcard-status" id="stat-update-rate">—</div>
+          </div>
+          <div class="tcard" id="card-link">
+            <div class="tcard-label">Link Status</div>
+            <div class="tcard-value tcard-value-sm" id="val-link">IDLE</div>
+            <div class="tcard-unit"></div>
+            <div class="tcard-status" id="stat-link">—</div>
+          </div>
+        </div>
+
+        <!-- Event Timeline (mini) -->
+        <div class="panel" id="dash-events-panel">
+          <h3>Recent Events</h3>
+          <div id="dash-events" class="event-list-mini"></div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: LIVE TELEMETRY TABLE                                   -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-telemetry" class="page">
+        <div class="page-header"><h1>Live Telemetry Stream</h1></div>
+        <div class="telemetry-table-container">
+          <table id="telemetry-table" class="data-table">
+            <thead>
+              <tr>
+                <th>Time (s)</th><th>PKT#</th><th>Alt (m)</th><th>Press (Pa)</th>
+                <th>Temp (°C)</th><th>V (V)</th><th>Lat (°)</th><th>Lon (°)</th>
+                <th>GNSS Alt (m)</th><th>Sats</th><th>Accel</th><th>Gyro (°/s)</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody id="telemetry-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: CHARTS                                                 -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-charts" class="page">
+        <div class="page-header">
+          <h1>Telemetry Charts</h1>
+          <div class="chart-controls">
+            <button class="btn btn-sm" onclick="clearCharts()">Clear All</button>
+            <button class="btn btn-sm" onclick="toggleChartPause()">⏸ Pause Charts</button>
+            <label>Window: <select id="chart-window" onchange="setChartWindow(this.value)">
+              <option value="60">60s</option>
+              <option value="120">120s</option>
+              <option value="300" selected>300s</option>
+              <option value="600">600s</option>
+              <option value="0">All</option>
+            </select></label>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-panel"><canvas id="chart-altitude"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-gnss-alt"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-velocity"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-pressure"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-temperature"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-voltage"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-rpy"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-accel"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-gyro"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-sats"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: MAP                                                    -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-map" class="page">
+        <div class="page-header"><h1>Mission Tracking</h1></div>
+        <div id="map-container">
+          <div id="map-view" style="width:100%;height:calc(100vh - 160px);"></div>
+          <div id="map-info" class="map-overlay">
+            <div>Position: <span id="map-pos">—</span></div>
+            <div>Track points: <span id="map-points">0</span></div>
+            <div class="map-sim-label">📍 SIMULATED COORDINATES</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: COMMANDS                                               -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-commands" class="page">
+        <div class="page-header"><h1>Command Console</h1></div>
+        <div class="commands-layout">
+          <div class="cmd-buttons-panel">
+            <h3>Telecommands</h3>
+            <div class="cmd-grid">
+              <button class="cmd-btn cmd-primary" onclick="sendCommand('START_TELEMETRY')">
+                ▶ Start Telemetry
+                <span class="cmd-desc">Command CAN-7USAT to transmit (§6.1.i)</span>
+              </button>
+              <button class="cmd-btn cmd-warning" onclick="sendCommand('STOP_TELEMETRY')">
+                ⏹ Stop Telemetry
+                <span class="cmd-desc">Stop telemetry transmission</span>
+              </button>
+              <button class="cmd-btn" onclick="sendCommand('CALIBRATE_GYRO')">
+                🔧 Calibrate Gyro
+                <span class="cmd-desc">Zero gyro readings (§6.1.vi)</span>
+              </button>
+              <button class="cmd-btn" onclick="sendCommand('ZERO_BAROMETRIC_ALTITUDE')">
+                🔧 Zero Baro Altitude
+                <span class="cmd-desc">Set current altitude as zero (§6.1.vi)</span>
+              </button>
+              <button class="cmd-btn" onclick="sendCommand('CALIBRATE_ACCELEROMETER')">
+                🔧 Calibrate Accel
+                <span class="cmd-desc">Zero accelerometer (§6.1.vi)</span>
+              </button>
+              <button class="cmd-btn" onclick="sendCommand('REQUEST_STATUS')">
+                ℹ Request Status
+                <span class="cmd-desc">Query system status</span>
+              </button>
+              <button class="cmd-btn" onclick="sendCommand('REQUEST_CONFIGURATION')">
+                ℹ Request Config
+                <span class="cmd-desc">Query configuration</span>
+              </button>
+            </div>
+            <h3>Simulation Commands</h3>
+            <div class="cmd-grid">
+              <button class="cmd-btn cmd-sim" onclick="sendCommand('RESET_SIMULATION')">
+                ⟲ Reset Simulation
+              </button>
+              <button class="cmd-btn cmd-sim" onclick="sendCommand('INJECT_TEST_FAULT', {faultType:'BARO_FAILURE'}, true)">
+                ⚠ Inject Baro Failure
+              </button>
+              <button class="cmd-btn cmd-sim" onclick="sendCommand('INJECT_TEST_FAULT', {faultType:'GNSS_DROPOUT'}, true)">
+                ⚠ Inject GNSS Dropout
+              </button>
+              <button class="cmd-btn cmd-sim" onclick="sendCommand('INJECT_TEST_FAULT', {faultType:'PROCESSOR_RESET'}, true)">
+                ⚠ Inject CPU Reset
+              </button>
+            </div>
+          </div>
+          <div class="cmd-history-panel">
+            <h3>Command History</h3>
+            <div id="cmd-history" class="cmd-history-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: RADIO CONFIG                                           -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-radio" class="page">
+        <div class="page-header"><h1>Radio Configuration</h1></div>
+        <div class="config-layout">
+          <div class="config-panel">
+            <h3>📡 Radio Module Settings</h3>
+            <p class="config-note">⚠ Configuration defaults only. No RF transmission during simulation.</p>
+            <div class="config-form">
+              <label>Module: <input type="text" id="cfg-radio-module" value="SX1262 LoRa" /></label>
+              <label>Primary Freq (MHz): <input type="number" id="cfg-freq-primary" value="865.50" step="0.01" /></label>
+              <label>Backup Freq (MHz): <input type="number" id="cfg-freq-backup" value="867.25" step="0.01" /></label>
+              <label>Bandwidth (kHz): <input type="number" id="cfg-bandwidth" value="125" /></label>
+              <label>Spreading Factor: <select id="cfg-sf">
+                <option value="7" selected>SF7</option><option value="8">SF8</option>
+                <option value="9">SF9</option><option value="10">SF10</option>
+                <option value="11">SF11</option><option value="12">SF12</option>
+              </select></label>
+              <label>Coding Rate: <select id="cfg-cr">
+                <option value="4/5" selected>4/5</option><option value="4/6">4/6</option>
+                <option value="4/7">4/7</option><option value="4/8">4/8</option>
+              </select></label>
+              <label>Sync Word: <input type="text" id="cfg-syncword" value="0xA4" /></label>
+              <label>TX Power (dBm): <input type="number" id="cfg-txpower" value="10" /></label>
+              <label>Preamble Length: <input type="number" id="cfg-preamble" value="8" /></label>
+              <label>Team ID: <input type="text" id="cfg-team-id" value="038" /></label>
+            </div>
+            <button class="btn btn-primary" onclick="saveRadioConfig()">Save Configuration</button>
+          </div>
+          <div class="config-panel">
+            <h3>🔌 Serial Port</h3>
+            <div class="serial-panel">
+              <div class="serial-status">
+                <span>Status:</span>
+                <span id="serial-state" class="badge-disconnected">DISCONNECTED</span>
+                <span id="serial-hw" class="config-note">(Hardware: <span id="serial-hw-avail">checking…</span>)</span>
+              </div>
+              <div class="config-form">
+                <label>Port: <select id="serial-port-select"><option value="">— Select Port —</option></select></label>
+                <label>Baud Rate: <select id="serial-baud">
+                  <option value="9600">9600</option><option value="19200">19200</option>
+                  <option value="38400">38400</option><option value="57600">57600</option>
+                  <option value="115200" selected>115200</option>
+                </select></label>
+              </div>
+              <div class="serial-actions">
+                <button class="btn btn-primary" onclick="refreshPorts()">⟲ Refresh Ports</button>
+                <button class="btn btn-primary" id="btn-serial-connect" onclick="connectSerial()">Connect</button>
+                <button class="btn btn-danger" id="btn-serial-disconnect" onclick="disconnectSerial()" disabled>Disconnect</button>
+              </div>
+              <div class="serial-stats">
+                <div>Bytes received: <span id="serial-bytes">0</span></div>
+                <div>Packets received: <span id="serial-pkts">0</span></div>
+                <div>Last data: <span id="serial-last-data">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: DATA LOGGER                                            -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-logger" class="page">
+        <div class="page-header"><h1>Data Logger & Flight Files</h1></div>
+        <div class="logger-layout">
+          <div class="logger-controls">
+            <h3>Recording Controls</h3>
+            <div class="logger-status">
+              <div>Status: <span id="logger-state" class="badge-idle">NOT RECORDING</span></div>
+              <div>File: <span id="logger-file">—</span></div>
+              <div>Records: <span id="logger-records">0</span></div>
+              <div>Source: <span id="logger-source">—</span></div>
+            </div>
+            <div class="logger-actions">
+              <button class="btn btn-primary" id="btn-rec-start" onclick="startRecording()">⏺ Start Recording</button>
+              <button class="btn btn-danger" id="btn-rec-stop" onclick="stopRecording()" disabled>⏹ Stop Recording</button>
+              <button class="btn btn-secondary" onclick="selectOutputDir()">📁 Change Directory</button>
+            </div>
+          </div>
+          <div class="logger-files">
+            <h3>Flight Files</h3>
+            <div id="flight-files-list" class="file-list"></div>
+            <button class="btn btn-sm" onclick="refreshFlightFiles()">⟲ Refresh</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: EVENTS                                                 -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-events" class="page">
+        <div class="page-header">
+          <h1>Event Log</h1>
+          <div class="event-controls">
+            <label>Filter: <select id="event-filter-type" onchange="refreshEvents()">
+              <option value="">All Types</option>
+              <option value="STATE_TRANSITION">State Transitions</option>
+              <option value="COMMAND">Commands</option>
+              <option value="CALIBRATION">Calibration</option>
+              <option value="FAULT">Faults</option>
+              <option value="TELEMETRY">Telemetry</option>
+              <option value="SIMULATION">Simulation</option>
+              <option value="RECORDING">Recording</option>
+              <option value="CONNECTION">Connection</option>
+            </select></label>
+            <label>Severity: <select id="event-filter-severity" onchange="refreshEvents()">
+              <option value="">All</option>
+              <option value="WARNING">Warning+</option>
+              <option value="ERROR">Error+</option>
+            </select></label>
+            <button class="btn btn-sm btn-danger" onclick="clearEvents()">Clear</button>
+          </div>
+        </div>
+        <div id="event-log" class="event-log-full"></div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: SIMULATION                                             -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-simulation" class="page">
+        <div class="page-header"><h1>Simulation Controls</h1></div>
+        <div class="sim-layout">
+          <div class="sim-panel">
+            <h3>Scenario Selection</h3>
+            <div id="scenario-list" class="scenario-grid"></div>
+          </div>
+          <div class="sim-panel">
+            <h3>Playback Controls</h3>
+            <div class="sim-playback">
+              <button class="btn btn-primary btn-lg" id="btn-sim-start" onclick="simStart()">▶ Start</button>
+              <button class="btn btn-secondary btn-lg" id="btn-sim-pause" onclick="simPause()" disabled>⏸ Pause</button>
+              <button class="btn btn-secondary btn-lg" id="btn-sim-resume" onclick="simResume()" disabled>▶ Resume</button>
+              <button class="btn btn-danger btn-lg" id="btn-sim-stop" onclick="simStop()">⏹ Stop</button>
+              <button class="btn btn-danger btn-lg" onclick="simReset()">⟲ Reset</button>
+              <button class="btn btn-secondary btn-lg" onclick="simStep()">⏭ Step</button>
+            </div>
+            <div class="sim-speed-control">
+              <label>Speed: <span id="sim-speed-value">1.0</span>x</label>
+              <input type="range" id="sim-speed-slider" min="0.1" max="10" step="0.1" value="1" 
+                     oninput="setSimSpeed(this.value)">
+            </div>
+            <div class="sim-status-panel">
+              <h4>Simulation Status</h4>
+              <div>State: <span id="sim-state">IDLE</span></div>
+              <div>Phase: <span id="sim-phase">—</span></div>
+              <div>Time: <span id="sim-time">0.0 s</span></div>
+              <div>Packets: <span id="sim-packets">0</span></div>
+              <div>Running: <span id="sim-running">No</span></div>
+              <div>Finished: <span id="sim-finished">No</span></div>
+            </div>
+          </div>
+          <div class="sim-panel">
+            <h3>Simulation Parameters</h3>
+            <p class="config-note">These are configurable simulation assumptions, not competition-mandated values.</p>
+            <div class="config-form">
+              <label>Launch Altitude (m): <input type="number" id="sim-launch-alt" value="1000" /></label>
+              <label>Aerobreak Altitude (m): <input type="number" id="sim-aerobreak-alt" value="600" /></label>
+              <label>Primary Descent Rate (m/s): <input type="number" id="sim-descent-rate" value="20" /></label>
+              <label>Secondary Descent Rate (m/s): <input type="number" id="sim-secondary-rate" value="2" /></label>
+              <label>Ascent Rate (m/s): <input type="number" id="sim-ascent-rate" value="40" /></label>
+              <label>Sample Rate (Hz): <input type="number" id="sim-sample-rate" value="1" min="1" max="10" /></label>
+              <label>Random Seed: <input type="number" id="sim-seed" value="42" /></label>
+              <label>Ground Temp (°C): <input type="number" id="sim-ground-temp" value="28" step="0.1" /></label>
+              <label>Battery Start (V): <input type="number" id="sim-bat-start" value="8.40" step="0.01" /></label>
+            </div>
+            <button class="btn btn-primary" onclick="applySimConfig()">Apply Parameters</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <!-- PAGE: SETTINGS                                               -->
+      <!-- ═════════════════════════════════════════════════════════════ -->
+      <section id="page-settings" class="page">
+        <div class="page-header"><h1>Settings & Diagnostics</h1></div>
+        <div class="settings-layout">
+          <div class="config-panel">
+            <h3>Mission Configuration</h3>
+            <div class="config-form">
+              <label>Competition: <input type="text" value="IN-SPACe CAN-7USAT India 2026" disabled /></label>
+              <label>Team ID: <input type="text" id="set-team-id" value="038" /></label>
+              <label>Team ID Full: <input type="text" id="set-team-id-full" value="2026-IN-SPACe-CAN-7USAT-038" /></label>
+              <label>Ref. Latitude: <input type="number" id="set-ref-lat" value="26.7412" step="0.0001" /></label>
+              <label>Ref. Longitude: <input type="number" id="set-ref-lon" value="83.8894" step="0.0001" /></label>
+              <label>Ground Altitude ASL (m): <input type="number" id="set-ground-alt" value="80" /></label>
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          </div>
+          <div class="config-panel">
+            <h3>Diagnostics</h3>
+            <div class="diag-info">
+              <div>App Version: <span>1.0.0</span></div>
+              <div>Platform: <span id="diag-platform">—</span></div>
+              <div>Node Version: <span id="diag-node">—</span></div>
+              <div>Electron Version: <span id="diag-electron">—</span></div>
+              <div>Uptime: <span id="diag-uptime">—</span></div>
+              <div>Memory: <span id="diag-memory">—</span></div>
+              <div>Parser Stats: <span id="diag-parser">—</span></div>
+            </div>
+          </div>
+          <div class="config-panel">
+            <h3>Telemetry Field Encoding</h3>
+            <p class="config-note">
+              The competition document specifies an "ACCELEROMETER DATA" field (§6.3) 
+              without defining a complete encoding for all axes and orientation angles in a single field.
+              This application uses the encoding: <code>ax;ay;az;roll;pitch;yaw</code> 
+              (semicolon-separated within the CSV field). This must match your flight firmware's 
+              encoding. Update the configuration if your firmware uses a different format.
+            </p>
+            <label>Accel Field Separator: <input type="text" id="set-accel-sep" value=";" size="3" /></label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script>
+    if (typeof module === 'object') {
+      window.nodeModule = module;
+      module = undefined;
+    }
+  </script>
+  <script src="../../node_modules/chart.js/dist/chart.umd.js"></script>
+  <script src="../../node_modules/leaflet/dist/leaflet.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\\/script>');
+    }
+    if (typeof L === 'undefined') {
+      document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\\/script>');
+    }
+  </script>
+  <script>
+    if (window.nodeModule) {
+      module = window.nodeModule;
+    }
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
